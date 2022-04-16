@@ -1,4 +1,3 @@
-import datetime
 from pythonproject.celery import app
 from bson import ObjectId
 from rest_framework import serializers
@@ -35,6 +34,7 @@ class UserHomeSerializer(serializers.Serializer):
                                                {"new_posts": {"$slice": [page - 1, 1]}, "_id": 0, "password": 0,
                                                 "email": 0, "username": 0}))[0]['new_posts']
         for item in posts:
+            item["username"] = list(user_profile_handler.find({"_id": ObjectId(item["user"])}, {"username": 1}))[0]['username']
             item_id_convertor_to_string(item)
         return {"message": posts}
 
