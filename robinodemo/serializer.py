@@ -1,90 +1,42 @@
-from pythonproject.celery import app
 from bson import ObjectId
 from rest_framework import serializers
 from .utils import get_db_handle, get_collection_handle, item_id_convertor_to_string
 
 db_handler, mongo_client = get_db_handle('robinodemo', 'localhost', '27017')
-from .messages import *
+from common.messages import *
+from .celery_tasks import CeleryTasksRobino
 
 
-# ----------------done----------------
-class UserProfileSerializer(serializers.Serializer):
-    user_id = serializers.CharField(read_only=True)
-
-    def get(self, validated_data, page):
-        post_handler = get_collection_handle(db_handler, 'post')
-        if page == 1:
-            post_list = list(post_handler.find({"user.id": str(validated_data["user_id"])},
-                                               {"content": 1, "user": 1}).sort("_id", -1).limit(1))
-        else:
-            post_list = list(post_handler.find({"user.id": str(validated_data["user_id"]),
-                                                "_id": {"$lt": ObjectId(validated_data['_id'])}},
-                                               {"content": 1, "user": 1}).sort("_id", -1).limit(1))
-        for item in post_list:
-            item_id_convertor_to_string(item)
-        return {"message": post_list}
-
-
-# ----------------done----------------
 class UserHomeSerializer(serializers.Serializer):
+    user_id = serializers.CharField(required=True, max_length=24, min_length=24)
 
     def get(self, validated_data, page):
-        user_profile_handler = get_collection_handle(db_handler, "user_profile")
+        user_profile_handler = get_collection_handle(db_handler, "userprofile")
         posts = list(user_profile_handler.find({"_id": ObjectId(validated_data["user_id"])},
                                                {"new_posts": {"$slice": [page - 1, 1]}, "_id": 0, "password": 0,
                                                 "email": 0, "username": 0}))[0]['new_posts']
         for item in posts:
-            item["username"] = list(user_profile_handler.find({"_id": ObjectId(item["user"])}, {"username": 1}))[0]['username']
+            # en chi bud !!!!!!!!!!!!
+            # item["username"] = list(user_profile_handler.find({"_id": ObjectId(item["user"])}, {"username": 1}))[0][
+            #     'username']
             item_id_convertor_to_string(item)
         return {"message": posts}
 
 
-# ----------------change----------------
-@app.task
-def update_followers_posts(user_id, post):
-    followers_handler = get_collection_handle(db_handler, 'followers')
-    user_profile_handler = get_collection_handle(db_handler, 'user_profile')
-    follower_list = list(followers_handler.find({"user_id": user_id}, {"follower": 1, "_id": 0}))
-    final_list = []
-    for item in follower_list:
-        final_list.append(ObjectId(item['follower']))
-    # user_profile_handler.update_many({"_id": {"$in": final_list},{"$pop": {"new_posts": 1}})
-    post['_id'] = ObjectId(post['_id'])
-    user_profile_handler.update_many({"_id": {"$in": final_list}},
-                                     {"$push": {"new_posts": {"$each": [post], "$sort": {"_id": -1}}}})
-    return True
-
-
 # ----------------done----------------
-class PostSerializer(serializers.Serializer):
-    content = serializers.CharField(allow_null=False)
-    user = serializers.CharField(allow_null=False)
 
-    def create(self, validated_data):
-        user_handler = get_collection_handle(db_handler, 'user_profile')
-        post_handler = get_collection_handle(db_handler, 'post')
-
-        user_id = validated_data["user"]
-        validated_data["user"] = user_handler.find_one({"_id": ObjectId(validated_data["user"])},
-                                                       {"_id": 0, "username": 1, "email": 1})
-        validated_data["user"]["id"] = user_id
-        post_handler.insert_one(validated_data)
-        validated_data['_id'] = str(validated_data['_id'])
-        validated_data['user'] = validated_data['user']['id']
-        update_followers_posts.delay(user_id, validated_data)
-
-        return {"message": post_added}
 
 
 # ----------------done----------------
 class CommentSerializer(serializers.Serializer):
-    content = serializers.CharField(allow_null=False)
-    post_id = serializers.IntegerField(allow_null=False)
-    writer_id = serializers.IntegerField(allow_null=False)
+    content = serializers.CharField(required=True, allow_null=False, max_length=280)
+    writer = serializers.CharField(required=True, max_length=24, min_length=24)
+    post_id = serializers.CharField(required=True, max_length=24, min_length=24)
+    replies = serializers.IntegerField(required=True)
 
     def create(self, validated_data):
         # user handler
-        user_handler = get_collection_handle(db_handler, 'user_profile')
+        user_handler = get_collection_handle(db_handler, 'userprofile')
         id = validated_data["writer"]
         validated_data["writer"] = user_handler.find_one({"_id": ObjectId(validated_data["writer"])},
                                                          {"_id": 0, "username": 1, "email": 1})
@@ -98,13 +50,14 @@ class CommentSerializer(serializers.Serializer):
 
 # ----------------done----------------
 class ReplySerializer(serializers.Serializer):
-    content = serializers.CharField(allow_null=False)
-    post_id = serializers.IntegerField(allow_null=False)
-    writer_id = serializers.IntegerField(allow_null=False)
+    content = serializers.CharField(required=True, allow_null=False, max_length=280)
+    writer = serializers.CharField(required=True, max_length=24, min_length=24)
+    post_id = serializers.CharField(required=True, max_length=24, min_length=24)
+    source_id = serializers.CharField(required=True, max_length=24, min_length=24)
 
     def create(self, validated_data):
         # user handler
-        user_handler = get_collection_handle(db_handler, 'user_profile')
+        user_handler = get_collection_handle(db_handler, 'userprofile')
         id = validated_data["writer"]
         validated_data["writer"] = user_handler.find_one({"_id": ObjectId(validated_data["writer"])},
                                                          {"_id": 0, "username": 1, "email": 1})
@@ -120,12 +73,12 @@ class ReplySerializer(serializers.Serializer):
 
 # ----------------done----------------
 class LikeSerializer(serializers.Serializer):
-    post_id = serializers.CharField(allow_null=False)
-    liker_id = serializers.IntegerField(allow_null=False)
+    post_id = serializers.CharField(required=True, max_length=24, min_length=24)
+    liker = serializers.CharField(required=True, max_length=24, min_length=24)
 
     def create(self, validated_data):
         like_handler = get_collection_handle(db_handler, 'like')
-        user_handler = get_collection_handle(db_handler, 'user_profile')
+        user_handler = get_collection_handle(db_handler, 'userprofile')
         id = validated_data["liker"]
         validated_data["liker"] = user_handler.find_one({"_id": ObjectId(validated_data["liker"])},
                                                         {"_id": 0, "username": 1, "email": 1})
@@ -138,7 +91,8 @@ class LikeSerializer(serializers.Serializer):
 
 # ----------------done----------------
 class PostLikingUsersSerializer(serializers.Serializer):
-    post_id = serializers.CharField(allow_null=False)
+    post_id = serializers.CharField(required=True, max_length=24, min_length=24)
+    _id = serializers.CharField(allow_blank=True, max_length=24, min_length=24)
 
     def get(self, validated_data, page):
         like_handler = get_collection_handle(db_handler, "like")
@@ -158,7 +112,8 @@ class PostLikingUsersSerializer(serializers.Serializer):
 
 # ----------------done----------------
 class ShowCommentSerializer(serializers.Serializer):
-    post_id = serializers.CharField(allow_null=False)
+    _id = serializers.CharField(allow_blank=True, max_length=24, min_length=24)
+    post_id = serializers.CharField(required=True, max_length=24, min_length=24)
 
     def get(self, validated_data, page):
         comment_handler = get_collection_handle(db_handler, "comment")
@@ -180,7 +135,8 @@ class ShowCommentSerializer(serializers.Serializer):
 
 # ----------------done----------------
 class ShowRepliesSerializer(serializers.Serializer):
-    post_id = serializers.CharField(allow_null=False)
+    post_id = serializers.CharField(required=True, max_length=24, min_length=24)
+    comment_id = serializers.CharField(required=True, max_length=24, min_length=24)
 
     def get(self, validated_data, page):
         comment_handler = get_collection_handle(db_handler, "comment")
@@ -198,49 +154,8 @@ class ShowRepliesSerializer(serializers.Serializer):
 
 
 # ----------------done----------------
-@app.task
-def update_following_posts(user_id, profile_id):
-    user_profile_handler = get_collection_handle(db_handler, 'user_profile')
-    post_handler = get_collection_handle(db_handler, 'post')
-    post_list = list(post_handler.find({"user.id": profile_id}).sort("_id", -1).limit(100))
-    user_profile_handler.update_many({"_id": ObjectId(user_id)},
-                                     {"$push": {"new_posts": {"$each": post_list, "$sort": {"_id": -1}}}})
-
-    return True
-
-
-# ----------------done----------------
-@app.task
-def delete_following_posts(user_id, profile_id):
-    user_profile_handler = get_collection_handle(db_handler, 'user_profile')
-    user_profile_handler.update_many({"_id": ObjectId(user_id)},
-                                     {"$pull": {"new_posts": {"user.id": profile_id}}})
-    return True
-
-
-# ----------------done----------------
-class FollowUnFollowSerializer(serializers.Serializer):
-    user_id = serializers.CharField(allow_null=False)
-    followings_handler = get_collection_handle(db_handler, "followings")
-    followers_handler = get_collection_handle(db_handler, "followers")
-
-    def create(self, validated_data):
-        profile_id = validated_data["profile_id"]
-        user_id = validated_data["user_id"]
-        if self.followings_handler.find_one_and_delete({"user_id": user_id, "following": profile_id}):
-            self.followers_handler.delete_one({"user_id": profile_id, "follower": user_id})
-            delete_following_posts.delay(user_id, profile_id)
-            return {"message": user_unfollowed}
-        else:
-            self.followings_handler.insert_one({"user_id": user_id, "following": profile_id})
-            self.followers_handler.insert_one({"user_id": profile_id, "follower": user_id})
-            update_following_posts.delay(user_id, profile_id)
-        return {"message": user_followed}
-
-
-# ----------------done----------------
 class FollowersSerializer(serializers.Serializer):
-    user_id = serializers.CharField(allow_null=False)
+    user_id = serializers.CharField(required=True, max_length=24, min_length=24)
     follower_handler = get_collection_handle(db_handler, "followers")
 
     def get(self, validated_data, page):
@@ -258,7 +173,7 @@ class FollowersSerializer(serializers.Serializer):
 
 # ----------------done----------------
 class FollowingsSerializer(serializers.Serializer):
-    user_id = serializers.CharField(allow_null=False)
+    user_id = serializers.CharField(required=True, max_length=24, min_length=24)
     followings_handler = get_collection_handle(db_handler, "followings")
 
     def get(self, validated_data, page):
@@ -272,3 +187,32 @@ class FollowingsSerializer(serializers.Serializer):
         for item in followings:
             item_id_convertor_to_string(item)
         return {"message": followings}
+
+
+class DeletePostSerializer(serializers.Serializer):
+    user_id = serializers.CharField(required=True, max_length=24, min_length=24)
+    post_id = serializers.CharField(required=True, max_length=24, min_length=24)
+    post_handler = get_collection_handle(db_handler, "post")
+
+    def get(self, validated_data):
+        response = self.post_handler.remove(
+            {"_id": ObjectId(validated_data["post_id"]), "user.id": validated_data["user_id"]})
+        if response["ok"] == 1.0 and response["n"] == 1:
+            CeleryTasksRobino.delete_post_for_followers.delay(validated_data["user_id"], validated_data["post_id"])
+            CeleryTasksRobino.delete_post_comment.delay(validated_data["post_id"])
+            return post_deleted
+        return post_delete_forbidden
+
+
+class DeleteCommentSerializer(serializers.Serializer):
+    user_id = serializers.CharField(required=True, max_length=24, min_length=24)
+    comment_id = serializers.CharField(required=True, max_length=24, min_length=24)
+    comment_handler = get_collection_handle(db_handler, "comment")
+
+    def get(self, validated_data):
+        response = self.comment_handler.remove({"_id": ObjectId(validated_data["comment_id"]),
+                                                "writer.id": validated_data["user_id"]})
+        if response["ok"] == 1.0 and response["n"] == 1:
+            CeleryTasksRobino.delete_comment_reply.delay(validated_data["comment_id"])
+            return comment_deleted
+        return comment_delete_forbidden

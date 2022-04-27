@@ -1,58 +1,24 @@
-import datetime
-import time
-
-from mongo_auth.permissions import AuthenticatedOnly
+from authenticate.permissions import AuthenticatedOnly
+from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
-from .serializer import UserProfileSerializer, CommentSerializer, \
-    PostSerializer, LikeSerializer, \
-    PostLikingUsersSerializer, UserHomeSerializer, ShowCommentSerializer, \
-    FollowUnFollowSerializer, FollowersSerializer, ShowRepliesSerializer, FollowingsSerializer, ReplySerializer
-from .messages import *
-
-
-class GetProfile(APIView):
-    permission_classes = [AuthenticatedOnly]
-    serializer_class = UserProfileSerializer
-
-    def post(self, request, page):
-        payload = {
-            "user_id": str(request.user['_id']),
-            "_id": request.data["_id"],
-        }
-        if self.serializer_class(data=payload).is_valid():
-            response = self.serializer_class().get(payload, page)
-            return Response(data=response, status=status.HTTP_200_OK)
-        return Response(data=wrong_input, status=status.HTTP_400_BAD_REQUEST)
+from .serializer import CommentSerializer, LikeSerializer, \
+    PostLikingUsersSerializer, ShowCommentSerializer, FollowersSerializer, ShowRepliesSerializer, \
+    FollowingsSerializer, ReplySerializer, DeletePostSerializer, DeleteCommentSerializer, UserHomeSerializer
+from common.messages import *
+from common.payloads import PayloadGenerator
 
 
 class GetHome(APIView):
     permission_classes = [AuthenticatedOnly]
     serializer_class = UserHomeSerializer
 
-    def post(self, request, row):
-        payload = {
-            "user_id": str(request.user['_id']),
-        }
-        if self.serializer_class(data=payload).is_valid():
-            response = self.serializer_class().get(payload, row)
-            return Response(data=response, status=status.HTTP_200_OK)
-        return Response(data=wrong_input, status=status.HTTP_400_BAD_REQUEST)
-
-
-class AddPost(APIView):
-    permission_classes = [AuthenticatedOnly]
-    serializer_class = PostSerializer
-
-    def post(self, request):
-        payload = {
-            "content": request.data['content'],
-            "user": str(request.user['_id']),
-        }
+    def post(self, request, page):
+        payload = PayloadGenerator.home_payload(request.user["_id"])
         if self.serializer_class(data=payload).is_valid(raise_exception=True):
-            response = self.serializer_class().create(payload)
-            return Response(data=response, status=status.HTTP_201_CREATED)
+            response = self.serializer_class().get(payload, page)
+            return Response(data=response, status=status.HTTP_200_OK)
         return Response(data=wrong_input, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -61,14 +27,11 @@ class AddComment(APIView):
     serializer_class = CommentSerializer
 
     def post(self, request, post_id):
-        payload = {
-            "content": request.data['content'],
-            "writer": str(request.user['_id']),
-            "post_id": post_id,
-            "replies": 0
-        }
-        response = self.serializer_class().create(payload)
-        return Response(data=response, status=status.HTTP_201_CREATED)
+        payload = PayloadGenerator.add_comment_payload(request.data["content"], request.user["_id"], post_id)
+        if self.serializer_class(data=payload).is_valid(raise_exception=True):
+            response = self.serializer_class().create(payload)
+            return Response(data=response, status=status.HTTP_201_CREATED)
+        return Response(data=wrong_input, status=status.HTTP_400_BAD_REQUEST)
 
 
 class ReplyComment(APIView):
@@ -76,28 +39,24 @@ class ReplyComment(APIView):
     serializer_class = ReplySerializer
 
     def post(self, request, post_id, source_id):
-        payload = {
-            "content": request.data['content'],
-            "writer": str(request.user['_id']),
-            "post_id": post_id,
-            "source_id": source_id
-        }
-        response = self.serializer_class().create(payload)
-        return Response(data=response, status=status.HTTP_201_CREATED)
+        payload = PayloadGenerator.reply_comment_payload(request.data["content"], request.user["_id"], post_id,
+                                                         source_id)
+        if self.serializer_class(data=payload).is_valid(raise_exception=True):
+            response = self.serializer_class().create(payload)
+            return Response(data=response, status=status.HTTP_201_CREATED)
+        return Response(data=wrong_input, status=status.HTTP_400_BAD_REQUEST)
 
 
-# ----------------done----------------
 class LikeAPost(APIView):
     permission_classes = [AuthenticatedOnly]
     serializer_class = LikeSerializer
 
     def post(self, request, post_id):
-        payload = {
-            "liker": str(request.user['_id']),
-            "post_id": post_id
-        }
-        response = self.serializer_class().create(payload)
-        return Response(data=response, status=status.HTTP_201_CREATED)
+        payload = PayloadGenerator.like_post_payload(request.user["_id"], post_id)
+        if self.serializer_class(data=payload).is_valid(raise_exception=True):
+            response = self.serializer_class().create(payload)
+            return Response(data=response, status=status.HTTP_201_CREATED)
+        return Response(data=wrong_input, status=status.HTTP_400_BAD_REQUEST)
 
 
 class PostLikingUsers(APIView):
@@ -105,12 +64,11 @@ class PostLikingUsers(APIView):
     serializer_class = PostLikingUsersSerializer
 
     def post(self, request, post_id, page):
-        payload = {
-            "post_id": post_id,
-            "_id": request.data["_id"]
-        }
-        response = self.serializer_class().get(payload, page)
-        return Response(data=response, status=status.HTTP_201_CREATED)
+        payload = PayloadGenerator.post_liker_list_payload(post_id, request.data["_id"])
+        if self.serializer_class(data=payload).is_valid(raise_exception=True):
+            response = self.serializer_class().get(payload, page)
+            return Response(data=response, status=status.HTTP_201_CREATED)
+        return Response(data=wrong_input, status=status.HTTP_400_BAD_REQUEST)
 
 
 class ShowComment(APIView):
@@ -118,12 +76,11 @@ class ShowComment(APIView):
     serializer_class = ShowCommentSerializer
 
     def get(self, request, post_id, page):
-        payload = {
-            "_id": request.data["_id"],
-            "post_id": post_id,
-        }
-        response = self.serializer_class().get(payload, page)
-        return Response(data=response, status=status.HTTP_201_CREATED)
+        payload = PayloadGenerator.show_comment_payload(request.user["_id"], post_id)
+        if self.serializer_class(data=payload).is_valid(raise_exception=True):
+            response = self.serializer_class().get(payload, page)
+            return Response(data=response, status=status.HTTP_201_CREATED)
+        return Response(data=wrong_input, status=status.HTTP_400_BAD_REQUEST)
 
 
 class ShowReply(APIView):
@@ -131,25 +88,11 @@ class ShowReply(APIView):
     serializer_class = ShowRepliesSerializer
 
     def get(self, request, comment_id, page):
-        payload = {
-            "_id": request.data["_id"],
-            "comment_id": comment_id,
-        }
-        response = self.serializer_class().get(payload, page)
-        return Response(data=response, status=status.HTTP_201_CREATED)
-
-
-class FollowUnFollow(APIView):
-    permission_classes = [AuthenticatedOnly]
-    serializer_class = FollowUnFollowSerializer
-
-    def post(self, request, profile_id):
-        data = {
-            "user_id": str(request.user['_id']),
-            "profile_id": profile_id
-        }
-        response = self.serializer_class().create(data)
-        return Response(data=response, status=status.HTTP_201_CREATED)
+        payload = PayloadGenerator.show_reply_payload(request.data["_id"], comment_id)
+        if self.serializer_class(data=payload).is_valid(raise_exception=True):
+            response = self.serializer_class().get(payload, page)
+            return Response(data=response, status=status.HTTP_201_CREATED)
+        return Response(data=wrong_input, status=status.HTTP_400_BAD_REQUEST)
 
 
 class Followers(APIView):
@@ -157,11 +100,11 @@ class Followers(APIView):
     serializer_class = FollowersSerializer
 
     def post(self, request, page):
-        data = {
-            "user_id": str(request.user['_id']),
-        }
-        response = self.serializer_class().get(data, page)
-        return Response(data=response, status=status.HTTP_201_CREATED)
+        payload = PayloadGenerator.show_follower_payload(request.user["_id"])
+        if self.serializer_class(data=payload).is_valid(raise_exception=True):
+            response = self.serializer_class().get(payload, page)
+            return Response(data=response, status=status.HTTP_201_CREATED)
+        return Response(data=wrong_input, status=status.HTTP_400_BAD_REQUEST)
 
 
 class Followings(APIView):
@@ -169,9 +112,32 @@ class Followings(APIView):
     serializer_class = FollowingsSerializer
 
     def post(self, request, page):
-        data = {
-            "user_id": str(request.user['_id']),
-            "_id": request.data["_id"]
-        }
-        response = self.serializer_class().get(data, page)
-        return Response(data=response, status=status.HTTP_201_CREATED)
+        payload = PayloadGenerator.show_following_payload(request.user["_id"], request.data["_id"])
+        if self.serializer_class(data=payload).is_valid(raise_exception=True):
+            response = self.serializer_class().get(payload, page)
+            return Response(data=response, status=status.HTTP_201_CREATED)
+        return Response(data=wrong_input, status=status.HTTP_400_BAD_REQUEST)
+
+
+class DeletePost(APIView):
+    permission_classes = [AuthenticatedOnly]
+    serializer_class = DeletePostSerializer
+
+    def post(self, request, post_id):
+        payload = PayloadGenerator.delete_post_payload(request.user["_id"], post_id)
+        if self.serializer_class(data=payload).is_valid(raise_exception=True):
+            response = self.serializer_class().get(payload)
+            return Response(data=response, status=status.HTTP_200_OK)
+        return Response(data=wrong_input, status=status.HTTP_400_BAD_REQUEST)
+
+
+class DeleteComment(GenericAPIView):
+    permission_classes = [AuthenticatedOnly]
+    serializer_class = DeleteCommentSerializer
+
+    def post(self, request, comment_id):
+        payload = PayloadGenerator.delete_comment_payload(request.user["_id"], comment_id)
+        if self.serializer_class(data=payload).is_valid(raise_exception=True):
+            response = self.serializer_class().get(payload)
+            return Response(data=response, status=status.HTTP_200_OK)
+        return Response(data=wrong_input, status=status.HTTP_400_BAD_REQUEST)
