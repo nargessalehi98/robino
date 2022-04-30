@@ -1,4 +1,3 @@
-# authenticate/urls.py
 from authenticate import views
 from django.urls import path
 

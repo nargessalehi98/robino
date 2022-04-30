@@ -1,7 +1,7 @@
 from mongoengine import fields, Document, EmbeddedDocument, EmbeddedDocumentField
 
 
-# connect('robinodemo')
+# connect('core')
 
 
 class user_profile(Document):

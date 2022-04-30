@@ -1,6 +1,7 @@
 from bson import ObjectId
 from rest_framework import serializers
-from robinodemo.utils import get_db_handle, get_collection_handle, item_id_convertor_to_string
+from common.utils import get_db_handle, get_collection_handle, item_id_convertor_to_string, \
+    item_id_convertor_to_ObjectId
 from .inverted_index import search_query
 
 db_handler, mongo_client = get_db_handle('robinodemo', 'localhost', '27017')
@@ -13,6 +14,7 @@ class AccountQuerySerializer(serializers.Serializer):
 
     def get(self, validated_data, page):
         regex = str(validated_data["query"])
+        print(regex)
         if page == 1:
             profiles = list(self.profile_handler.find({"username": {"$regex": regex, "$options": "i"}},
                                                       {"_id": 1, "username": 1}).sort("_id", -1).limit(1))

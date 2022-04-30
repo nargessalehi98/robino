@@ -17,7 +17,7 @@ from django.contrib import admin
 from django.urls import path, include
 
 urlpatterns = [
-    path('', include('robinodemo.urls')),
+    path('', include('core.urls')),
     path('', include('authenticate.urls')),
     path('', include('search.urls')),
     path('', include('follow.urls')),

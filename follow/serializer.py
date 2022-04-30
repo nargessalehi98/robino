@@ -1,10 +1,10 @@
 from bson import ObjectId
 from rest_framework import serializers
-from robinodemo.celery_tasks import CeleryTasksRobino
+from core.celery_tasks import CeleryTasksRobino
 from common.messages import *
-from robinodemo.serializer import db_handler
-from robinodemo.utils import get_collection_handle
-from robinodemo.utils import item_id_convertor_to_string
+from core.serializer import db_handler
+from common.utils import get_collection_handle
+from common.utils import item_id_convertor_to_string
 
 
 class FollowUnFollowSerializer(serializers.Serializer):

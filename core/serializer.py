@@ -1,6 +1,6 @@
 from bson import ObjectId
 from rest_framework import serializers
-from .utils import get_db_handle, get_collection_handle, item_id_convertor_to_string
+from common.utils import get_db_handle, get_collection_handle, item_id_convertor_to_string
 
 db_handler, mongo_client = get_db_handle('robinodemo', 'localhost', '27017')
 from common.messages import *
@@ -23,8 +23,34 @@ class UserHomeSerializer(serializers.Serializer):
         return {"message": posts}
 
 
-# ----------------done----------------
+# ----------------doooooooooooooooooo----------------
+class ProfileSerializer(serializers.Serializer):
+    username = serializers.CharField(required=True)
+    user_profile_handler = get_collection_handle(db_handler, 'userprofile')
+    follower_handler = get_collection_handle(db_handler, 'followers')
+    followings_handler = get_collection_handle(db_handler, 'followings')
+    post_handler = get_collection_handle(db_handler, 'post')
 
+    def get(self, validated_data, page):
+        follower = self.follower_handler.find({"user_id": validated_data["user_id"]}).count()
+        followings = self.followings_handler.find({"user_id": validated_data["user_id"]}).count()
+        posts_number = self.post_handler.find({"user.id": validated_data["user_id"]}).count()
+        profile_info = {
+            "followers": follower,
+            "followings": followings,
+            "posts": posts_number
+        }
+        user = self.user_profile_handler.find({"username": validated_data["username"], "public": "True"})
+        if user.count() == 1:
+            if page == 1:
+                posts = list(self.post_handler({"user.id": user.object_id}))
+                for post in posts:
+                    item_id_convertor_to_string(post)
+                return {"messages": posts, "profile_info": profile_info}
+        return {"messages": "no post"}
+        # elif self.user_profile_handler.find_one({"username": validated_data["profile_user_name"]})
+        # else:
+        #     return {"message": user_not_found}
 
 
 # ----------------done----------------

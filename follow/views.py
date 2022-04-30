@@ -13,7 +13,7 @@ class FollowUnFollow(APIView):
     serializer_class = FollowUnFollowSerializer
 
     def post(self, request, profile_id):
-        payload = PayloadGenerator.follow_unfollow_payload(request.user["_id"], profile_id)
+        payload = PayloadGenerator.follow_unfollow_payload(request.user["_id"], profile_id,request.data["profile_status"])
         if self.serializer_class(data=payload).is_valid(raise_exception=True):
             if request.data["profile_status"] == "True":
                 response = self.serializer_class().create(payload)

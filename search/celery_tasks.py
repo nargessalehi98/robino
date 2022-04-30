@@ -1,7 +1,4 @@
-from bson import ObjectId
 from config.celery import app
-from robinodemo.serializer import db_handler
-from robinodemo.utils import get_collection_handle
 from .inverted_index import pre_processing
 
 

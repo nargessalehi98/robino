@@ -17,6 +17,7 @@ def signup(request):
         signup_data = {}
         # i added to package
         signup_data["new_posts"] = []
+        signup_data["public"] = "True"
         all_fields = set(fields + ("email", "username", "password"))
         if secondary_username_field is not None:
             all_fields.add(secondary_username_field)

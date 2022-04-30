@@ -5,7 +5,8 @@ from rest_framework.views import APIView
 from rest_framework import status
 from .serializer import CommentSerializer, LikeSerializer, \
     PostLikingUsersSerializer, ShowCommentSerializer, FollowersSerializer, ShowRepliesSerializer, \
-    FollowingsSerializer, ReplySerializer, DeletePostSerializer, DeleteCommentSerializer, UserHomeSerializer
+    FollowingsSerializer, ReplySerializer, DeletePostSerializer, DeleteCommentSerializer, UserHomeSerializer, \
+    ProfileSerializer
 from common.messages import *
 from common.payloads import PayloadGenerator
 
@@ -16,6 +17,18 @@ class GetHome(APIView):
 
     def post(self, request, page):
         payload = PayloadGenerator.home_payload(request.user["_id"])
+        if self.serializer_class(data=payload).is_valid(raise_exception=True):
+            response = self.serializer_class().get(payload, page)
+            return Response(data=response, status=status.HTTP_200_OK)
+        return Response(data=wrong_input, status=status.HTTP_400_BAD_REQUEST)
+
+
+class GetProfileApiView(APIView):
+    permission_classes = [AuthenticatedOnly]
+    serializer_class = ProfileSerializer
+
+    def get(self, request, page, username):
+        payload = {"user_id": request.user["_id"], "username": username}
         if self.serializer_class(data=payload).is_valid(raise_exception=True):
             response = self.serializer_class().get(payload, page)
             return Response(data=response, status=status.HTTP_200_OK)

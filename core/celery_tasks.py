@@ -1,7 +1,7 @@
 from bson import ObjectId
 from config.celery import app
-from robinodemo.serializer import db_handler
-from robinodemo.utils import get_collection_handle
+from core.serializer import db_handler
+from common.utils import get_collection_handle
 
 
 class CeleryTasksRobino:

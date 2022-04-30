@@ -1,9 +1,10 @@
 from django.urls import path
-from .views import GetProfileApi, GetFollowersApi, GetFollowingsApi, AddPostApi
+from .views import GetProfileApi, GetFollowersApi, GetFollowingsApi, AddPostApi, ProfileStatusApi
 
 urlpatterns = [
     path('robino/profile/<int:page>/', GetProfileApi.as_view()),
     path('robino/profile/followers/<int:page>/', GetFollowersApi.as_view()),
     path('robino/profile/followings/<int:page>/', GetFollowingsApi.as_view()),
     path('robino/profile/add-post/', AddPostApi.as_view()),
+    path('robino/profile/status/', ProfileStatusApi.as_view())
 ]

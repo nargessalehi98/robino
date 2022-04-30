@@ -4,7 +4,7 @@ from rest_framework.views import APIView
 
 from authenticate.permissions import AuthenticatedOnly
 from common.messages import wrong_input
-from .serializer import UserProfileSerializer, FollowersSerializer, PostSerializer
+from .serializer import UserProfileSerializer, FollowersSerializer, PostSerializer, ProfileStatusSerializer
 from common.payloads import PayloadGenerator
 
 
@@ -55,3 +55,14 @@ class AddPostApi(APIView):
             return Response(data=response, status=status.HTTP_201_CREATED)
         return Response(data=wrong_input, status=status.HTTP_400_BAD_REQUEST)
 
+
+class ProfileStatusApi(APIView):
+    permission_classes = [AuthenticatedOnly]
+    serializer_class = ProfileStatusSerializer
+
+    def post(self, request):
+        payload = {"_id": str(request.user["_id"])}
+        if self.serializer_class(data=payload).is_valid(raise_exception=True):
+            response = self.serializer_class().create(payload)
+            return Response(data=response, status=status.HTTP_201_CREATED)
+        return Response(data=wrong_input, status=status.HTTP_400_BAD_REQUEST)

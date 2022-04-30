@@ -1,4 +1,6 @@
+from bson import ObjectId
 from pymongo import MongoClient
+
 
 def get_db_handle(db_name, host, port):
     client = MongoClient(host=host,
@@ -17,3 +19,7 @@ def object_id_convertor_to_string(id):
 
 def item_id_convertor_to_string(item):
     item['_id'] = str(item['_id'])
+
+
+def item_id_convertor_to_ObjectId(item):
+    item['_id'] = ObjectId(item['_id'])

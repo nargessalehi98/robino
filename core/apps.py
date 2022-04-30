@@ -3,4 +3,4 @@ from django.apps import AppConfig
 
 class RobinodemoConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'robinodemo'
+    name = 'core'

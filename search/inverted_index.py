@@ -1,6 +1,8 @@
 import collections
+
+from bson import ObjectId
 from parsivar import Normalizer, Tokenizer
-from robinodemo.utils import get_db_handle, get_collection_handle
+from common.utils import get_db_handle, get_collection_handle
 
 db_handler, mongo_client = get_db_handle('robinodemo', 'localhost', '27017')
 inverted_index_handler = get_collection_handle(db_handler, 'inverted_index')
@@ -19,7 +21,7 @@ def pruning(data):
                      '\xa0', '،', ')', '(', '٪', '()', '()'
                      ]
     for word in data:
-        if word in pruned_letter :
+        if word in pruned_letter:
             data.remove(word)
     return data
 
@@ -50,9 +52,9 @@ def tokenize_data(data):
 def create_inverted_index(query, _id):
     for item in query:
         inverted_index_handler.find_one_and_update({"token": item, "doc_id": {"$size": 100}}, {"$pop": {"doc_id": -1}})
-        output = inverted_index_handler.find_one_and_update({"token": item}, {"$addToSet": {"doc_id": _id}})
+        output = inverted_index_handler.find_one_and_update({"token": item}, {"$addToSet": {"doc_id": ObjectId(_id)}})
         if output is None:
-            inverted_index_handler.insert_one({"token": item, "doc_id": [_id]})
+            inverted_index_handler.insert_one({"token": item, "doc_id": [ObjectId(_id)]})
 
 
 def search_query(query):
@@ -78,5 +80,3 @@ def pre_processing(query, _id):
     query = del_stop_words(query)
     create_inverted_index(query, _id)
     return query
-
-

@@ -1,10 +1,10 @@
 from django.urls import path
 from . import views
 
-
 urlpatterns = [
     # list response
     path('robino/profile/home/<int:page>/', views.GetHome.as_view()),
+    path('robino/profile/<str:username>/<int:page>/', views.GetProfileApiView.as_view()),
     # single response
     path('robino/profile/add-comment/<str:post_id>/', views.AddComment.as_view()),
     path('robino/profile/reply-comment/<str:post_id>/<str:source_id>/', views.ReplyComment.as_view()),
@@ -19,5 +19,3 @@ urlpatterns = [
     path('robino/profile/show-followers/<int:page>/', views.Followers.as_view()),
     path('robino/profile/show-followings/<int:page>/', views.Followings.as_view()),
 ]
-
-
