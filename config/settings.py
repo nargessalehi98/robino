@@ -39,7 +39,15 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'authenticate',
     'core',
+    'common',
+    'follow',
+    'notification',
+    'search',
+    'userprofile',
+    'django_user_agents',
 ]
+
+USER_AGENTS_CACHE = 'default'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -49,6 +57,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'django_user_agents.middleware.UserAgentMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'

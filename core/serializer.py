@@ -5,6 +5,7 @@ from common.utils import get_db_handle, get_collection_handle, item_id_convertor
 db_handler, mongo_client = get_db_handle('robinodemo', 'localhost', '27017')
 from common.messages import *
 from .celery_tasks import CeleryTasksRobino
+from notification.celery_tasks import CeleryTasksNotif
 
 
 class UserHomeSerializer(serializers.Serializer):
@@ -63,6 +64,7 @@ class CommentSerializer(serializers.Serializer):
     def create(self, validated_data):
         # user handler
         user_handler = get_collection_handle(db_handler, 'userprofile')
+        post_handler = get_collection_handle(db_handler, 'post')
         id = validated_data["writer"]
         validated_data["writer"] = user_handler.find_one({"_id": ObjectId(validated_data["writer"])},
                                                          {"_id": 0, "username": 1, "email": 1})
@@ -70,7 +72,9 @@ class CommentSerializer(serializers.Serializer):
         # comment handler
         comment_handler = get_collection_handle(db_handler, 'comment')
         # insert comment based on validate_data
-        comment_handler.insert_one(validated_data)
+        comment = comment_handler.insert_one(validated_data)
+        user_id = list(post_handler.find({"_id": ObjectId(validated_data["post_id"])}, {"user": 1}))[0]["user"]["id"]
+        CeleryTasksNotif.add_notif_for_add_comment.delay(str(comment.inserted_id),user_id, id)
         return {"message": comment_added}
 
 
@@ -84,6 +88,7 @@ class ReplySerializer(serializers.Serializer):
     def create(self, validated_data):
         # user handler
         user_handler = get_collection_handle(db_handler, 'userprofile')
+        post_handler = get_collection_handle(db_handler, 'post')
         id = validated_data["writer"]
         validated_data["writer"] = user_handler.find_one({"_id": ObjectId(validated_data["writer"])},
                                                          {"_id": 0, "username": 1, "email": 1})
@@ -93,7 +98,9 @@ class ReplySerializer(serializers.Serializer):
         # increase post replies
         comment_handler.update_one({"_id": ObjectId(validated_data["source_id"])}, {"$inc": {"replies": 1}})
         # insert comment based on validate_data
-        comment_handler.insert_one(validated_data)
+        comment = comment_handler.insert_one(validated_data)
+        user_id = list(post_handler.find({"_id": ObjectId(validated_data["post_id"])}, {"user": 1}))[0]["user"]["id"]
+        CeleryTasksNotif.add_notif_for_add_comment.delay(str(comment.inserted_id),user_id, id)
         return {"message": comment_added}
 
 
@@ -105,12 +112,16 @@ class LikeSerializer(serializers.Serializer):
     def create(self, validated_data):
         like_handler = get_collection_handle(db_handler, 'like')
         user_handler = get_collection_handle(db_handler, 'userprofile')
+        post_handler = get_collection_handle(db_handler, 'post')
         id = validated_data["liker"]
         validated_data["liker"] = user_handler.find_one({"_id": ObjectId(validated_data["liker"])},
                                                         {"_id": 0, "username": 1, "email": 1})
         validated_data["liker"]["id"] = id
         if not like_handler.find_one({"post_id": validated_data['post_id'], "liker.id": id}):
-            like_handler.insert_one(validated_data)
+            like = like_handler.insert_one(validated_data)
+            user_id = list(post_handler.find({"_id": ObjectId(validated_data["post_id"])},
+                                             {"user": 1}))[0]["user"]["id"]
+            CeleryTasksNotif.add_notif_for_like_post.delay(str(like.inserted_id), user_id, id)
             return {"message": "Successfully liked!"}
         return {"message": "Successfully liked before!"}
 

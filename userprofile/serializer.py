@@ -92,6 +92,47 @@ class PostSerializer(serializers.Serializer):
         return {"message": post_added}
 
 
+class SettingSerializer(serializers.Serializer):
+    _id = serializers.CharField(allow_blank=True, max_length=24)
+    user_handler = get_collection_handle(db_handler, 'userprofile')
+
+    def get(self, validated_data):
+        user = list(self.user_handler.find({"_id": ObjectId(validated_data["_id"])},
+                                           {"username": 1, "email": 1, "public": 1, "_id": 0}))[0]
+        user["password"] = "*"
+        return {"messagse": user}
+
+
+class ChangeUsernameSerializer(serializers.Serializer):
+    _id = serializers.CharField(allow_blank=True, max_length=24)
+    user_handler = get_collection_handle(db_handler, 'userprofile')
+
+    def get(self, validated_data):
+        self.user_handler.find_and_modify({"_id": ObjectId(validated_data["_id"])},
+                                          {"$set": {"username": validated_data["username"]}})
+        return {"messagse": username_changed}
+
+
+class ChangeEmailSerializer(serializers.Serializer):
+    _id = serializers.CharField(allow_blank=True, max_length=24)
+    user_handler = get_collection_handle(db_handler, 'userprofile')
+
+    def get(self, validated_data):
+        self.user_handler.find_and_modify({"_id": ObjectId(validated_data["_id"])},
+                                          {"$set": {"email": validated_data["email"]}})
+        return {"messagse": email_changed}
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    _id = serializers.CharField(allow_blank=True, max_length=24)
+    user_handler = get_collection_handle(db_handler, 'userprofile')
+
+    def get(self, validated_data):
+        self.user_handler.find_and_modify({"_id": ObjectId(validated_data["_id"])},
+                                          {"$set": {"password": validated_data["password"]}})
+        return {"messagse": password_changed}
+
+
 class ProfileStatusSerializer(serializers.Serializer):
     _id = serializers.CharField(allow_blank=True, max_length=24)
     user_handler = get_collection_handle(db_handler, 'userprofile')

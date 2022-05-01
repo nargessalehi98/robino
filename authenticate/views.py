@@ -1,3 +1,4 @@
+from django_user_agents.utils import get_user_agent
 from rest_framework.decorators import api_view
 from authenticate.utils import create_unique_object_id, pwd_context
 from authenticate.db import database, auth_collection, fields, jwt_life, jwt_secret, secondary_username_field
@@ -8,6 +9,9 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
 from .permissions import login_status
+from common.utils import password_is_valid
+from .utils import check_active_devices
+from .celery_tasks import CeleryTasksAuth
 
 
 @api_view(["POST"])
@@ -15,9 +19,9 @@ def signup(request):
     try:
         data = request.data if request.data is not None else {}
         signup_data = {}
-        # i added to package
         signup_data["new_posts"] = []
         signup_data["public"] = "True"
+        signup_data["devices"] = []
         all_fields = set(fields + ("email", "username", "password"))
         if secondary_username_field is not None:
             all_fields.add(secondary_username_field)
@@ -27,6 +31,8 @@ def signup(request):
             else:
                 return Response(status=status.HTTP_400_BAD_REQUEST,
                                 data={"error_msg": field.title() + " does not exist."})
+        # if not password_is_valid(signup_data["password"]):
+        #     return Response(status=status.HTTP_400_BAD_REQUEST, data={"error_msg": messages.password_error})
         signup_data["password"] = pwd_context.hash(signup_data["password"])
         if database[auth_collection].find_one({"email": signup_data['email']}) is None:
             if secondary_username_field:
@@ -74,6 +80,7 @@ def login(request):
                 token = jwt.encode({'password': user['password'],
                                     'exp': datetime.datetime.now() + datetime.timedelta(days=jwt_life)},
                                    jwt_secret, algorithm='HS256').decode('utf-8')
+                database['activetokens'].insert_one({"token": token})
                 return Response(status=status.HTTP_200_OK,
                                 data={"data": {"token": token}})
             else:
@@ -96,7 +103,7 @@ def logout(request):
         flag, user_obj = login_status(request)
         token = request.META.get('HTTP_AUTHORIZATION')
         if flag:
-            database['TokenBlackList'].insert_one({"token": token})
+            database['activetokens'].remove({"token": token})
             return Response(status=status.HTTP_200_OK, data={"data": {"message": "logged out"}})
     except Exception as e:
         return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR,

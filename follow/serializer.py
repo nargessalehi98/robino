@@ -5,6 +5,7 @@ from common.messages import *
 from core.serializer import db_handler
 from common.utils import get_collection_handle
 from common.utils import item_id_convertor_to_string
+from notification.celery_tasks import CeleryTasksNotif
 
 
 class FollowUnFollowSerializer(serializers.Serializer):
@@ -17,8 +18,11 @@ class FollowUnFollowSerializer(serializers.Serializer):
     def add(self, validated_data):
         profile_id = validated_data["profile_id"]
         user_id = validated_data["user_id"]
-        self.request_handler.insert_one({"requester": user_id, "receiver": profile_id})
-        return {"messsage": follow_request_added}
+        if not self.request_handler.find_one({"requester": user_id, "receiver": profile_id}):
+            notification = self.request_handler.insert_one({"requester": user_id, "receiver": profile_id})
+            CeleryTasksNotif.add_notif_for_follow_request.delay(str(notification.inserted_id), profile_id, user_id)
+            return {"messsage": follow_request_added}
+        return {"messsage": follow_request_already_send}
 
     def create(self, validated_data):
         profile_id = validated_data["profile_id"]
