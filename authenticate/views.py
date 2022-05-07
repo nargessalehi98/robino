@@ -10,7 +10,7 @@ from rest_framework import status
 from rest_framework.exceptions import ValidationError
 from .permissions import login_status
 from common.utils import password_is_valid
-from .utils import check_active_devices
+from .utils import check_active_devices, remove_active_token, remove_active_device
 from .celery_tasks import CeleryTasksAuth
 
 
@@ -21,7 +21,7 @@ def signup(request):
         signup_data = {}
         signup_data["new_posts"] = []
         signup_data["public"] = "True"
-        signup_data["devices"] = []
+        signup_data["device"] = {"token": "", "device": "", "os": "", "browser": ""}
         all_fields = set(fields + ("email", "username", "password"))
         if secondary_username_field is not None:
             all_fields.add(secondary_username_field)
@@ -71,7 +71,7 @@ def login(request):
             user = database[auth_collection].find_one({"email": username}, {"_id": 0})
         else:
             if secondary_username_field:
-                user = database[auth_collection].find_one({secondary_username_field: username}, {"_id": 0})
+                user = database[auth_collection].find_one({secondary_username_field: username})
             else:
                 return Response(status=status.HTTP_403_FORBIDDEN,
                                 data={"data": {"error_msg": messages.user_not_found}})
@@ -81,6 +81,7 @@ def login(request):
                                     'exp': datetime.datetime.now() + datetime.timedelta(days=jwt_life)},
                                    jwt_secret, algorithm='HS256').decode('utf-8')
                 database['activetokens'].insert_one({"token": token})
+                check_active_devices(request, user, token)
                 return Response(status=status.HTTP_200_OK,
                                 data={"data": {"token": token}})
             else:
@@ -100,10 +101,10 @@ def login(request):
 @api_view(["POST"])
 def logout(request):
     try:
-        flag, user_obj = login_status(request)
+        flag, user_obj, token, device, browser, os = login_status(request)
         token = request.META.get('HTTP_AUTHORIZATION')
         if flag:
-            database['activetokens'].remove({"token": token})
+            remove_active_token(token)
             return Response(status=status.HTTP_200_OK, data={"data": {"message": "logged out"}})
     except Exception as e:
         return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR,
