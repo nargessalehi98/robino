@@ -1,0 +1,24 @@
+version: '3.4'
+
+services:
+
+  config:
+    image: myapp:5
+    network_mode: "host"
+    ports:
+      - 8080:8080
+
+  redis_app:
+    image: redis:latest
+    ports:
+      - 6380:6379
+
+  celery_worker:
+    image: celery:1
+    network_mode: "host"
+    volumes:
+      - /home/narges/PycharmProjects/pythonProject2/config:/home/narges/PycharmProjects/pythonProject2/config
+    depends_on:
+      - redis_app
+
+1

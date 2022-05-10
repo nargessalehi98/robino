@@ -1,7 +1,8 @@
 import collections
 
 from bson import ObjectId
-from parsivar import Normalizer, Tokenizer
+from .tokenizer import Tokenizer
+from .normalizer import Normalizer
 from common.utils import get_db_handle, get_collection_handle
 
 db_handler, mongo_client = get_db_handle('robinodemo', 'localhost', '27017')

@@ -21,5 +21,6 @@ urlpatterns = [
     path('', include('authenticate.urls')),
     path('', include('search.urls')),
     path('', include('follow.urls')),
-    path('', include('userprofile.urls'))
+    path('', include('userprofile.urls')),
+    path('', include('notification.urls'))
 ]
