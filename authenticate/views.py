@@ -57,16 +57,13 @@ def signup(request):
             return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED,
                             data={"data": {"error_msg": messages.user_exists}})
     except ValidationError as v_error:
-        print(v_error)
         return Response(status=status.HTTP_400_BAD_REQUEST,
                         data={'success': False, 'message': str(v_error)})
     except Exception as e:
-        print(e)
         return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                         data={"data": {"error_msg": str(e)}})
 
 
-# @ratelimit(key='header:x-real-ip', rate='2/m', method='POST', block=True)
 @ratelimit(field='username', method='POST', rate='1/m')
 @api_view(["POST"])
 def login(request):
@@ -105,7 +102,6 @@ def login(request):
                         data={"data": {"error_msg": str(e)}})
 
 
-# @ratelimit(key='header:x-real-ip', rate='2/m', method='POST', block=True)
 @ratelimit(field='username', method='POST', rate='1/m')
 @api_view(["POST"])
 def logout(request):

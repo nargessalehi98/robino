@@ -20,5 +20,3 @@ services:
       - /home/narges/PycharmProjects/pythonProject2/config:/home/narges/PycharmProjects/pythonProject2/config
     depends_on:
       - redis_app
-
-1

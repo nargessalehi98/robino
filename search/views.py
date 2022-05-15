@@ -14,7 +14,7 @@ class SearchAccount(APIView):
     permission_classes = [AuthenticatedOnly]
     serializer_class = AccountQuerySerializer
 
-    # @method_decorator(ratelimit(key='header:x-real-ip', rate='2/m', method='POST', block=True))
+    @method_decorator(ratelimit(key='header:x-real-ip', rate='2/m', method='POST', block=True))
     def post(self, request, page):
         payload = PayloadGenerator.search_account_payload(request.data["query"], request.data["_id"])
         if self.serializer_class(data=payload).is_valid(raise_exception=True):
@@ -28,8 +28,6 @@ class SearchPost(APIView):
     serializer_class = PostQuerySerializer
 
     @method_decorator(ratelimit(key='header:x-real-ip', rate='2/m', method='POST', block=True))
-    # @ratelimit(field='username', rate='1/m')
-    # @ratelimit(key='username', method='POST', rate='1/m')
     def post(self, request, page):
         payload = PayloadGenerator.search_post_payload(request.data["query"])
         if self.serializer_class(data=payload).is_valid(raise_exception=True):

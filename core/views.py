@@ -20,11 +20,15 @@ class GetHome(APIView):
 
     @ratelimit(field='username', method='POST', rate='1/m')
     def post(self, request, page):
-        payload = PayloadGenerator.home_payload(request.user["_id"])
-        if self.serializer_class(data=payload).is_valid(raise_exception=True):
-            response = self.serializer_class().get(payload, page)
-            return Response(data=response, status=status.HTTP_200_OK)
-        return Response(data=wrong_input, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            payload = PayloadGenerator.home_payload(request.user["_id"])
+            if self.serializer_class(data=payload).is_valid(raise_exception=True):
+                response = self.serializer_class().get(payload, page)
+                return Response(data=response, status=status.HTTP_200_OK)
+            return Response(data=wrong_input, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response(status=status.HTTP_400_BAD_REQUEST,
+                            data={"data": {"error_msg": str(e)}})
 
 
 class GetProfileApiView(APIView):
